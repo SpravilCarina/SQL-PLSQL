@@ -1,0 +1,152 @@
+--1. Trigger pentru inserare în tabel: verifică id-ul nou și îl setează automat dacă este NULL, folosind valoarea maximă din coloană. Dacă id-ul este duplicat, operația este abandonată și se afișează un mesaj de eroare; altfel, inserarea are loc cu succes și se afișează un mesaj de confirmare.
+CREATE TABLE Evidenta_persoane(id INTEGER PRIMARY KEY,nume VARCHAR(30));
+SET SERVEROUTPUT ON;
+
+CREATE OR REPLACE TRIGGER tr1
+BEFORE INSERT ON Evidenta_persoane
+FOR EACH ROW
+DECLARE
+nr integer;
+maxim integer;
+BEGIN
+
+IF:NEW.id is NULL then
+select max(id) INTO maxim from Evidenta_Persoane;
+:NEW.id:=maxim+1;
+DBMS_OUTPUT.PUT_LINE('Anomalitate rezolvata!');
+ELSE
+SELECT count(*) INTO nr from Evidenta_persoane WHERE id=:NEW.id;
+IF (NR!=0) THEN
+DBMS_OUTPUT.PUT_LINE('Eroare: acest id se gadeste in tabela!');
+ELSE
+DBMS_OUTPUT.PUT_LINE('Inserare reusita!');
+END IF;
+END IF;
+END;
+/
+
+INSERT INTO Evidenta_persoane VALUES(1,'Ana');
+INSERT INTO Evidenta_persoane VALUES(1,'Vali');
+INSERT INTO Evidenta_persoane VALUES(NULL,'Ana');
+
+SELECT * FROM Evidenta_persoane;
+DROP TABLE Evidenta_persoane;
+
+--2.Se creează un trigger care verifică în momentul inserării dacă data_nasterii este mai mică decât data curentă; în caz contrar, se completează cu NULL și se afișează un mesaj, dar linia este adăugată în continuare.
+
+CREATE TABLE Evidenta_pacienti(cnp char(13) PRIMARY KEY, nume VARCHAR(30), data_nasterii date);
+
+CREATE OR REPLACE TRIGGER tr2
+BEFORE INSERT ON Evidenta_pacienti
+FOR EACH ROW
+DECLARE
+BEGIN
+
+IF:NEW.data_nasterii>sysdate THEN
+  :NEW.data_nasterii:=NULL;
+ELSE 
+   DBMS_OUTPUT.PUT_LINE('Inserare reusita!');
+END IF;
+END;
+/
+SET AUTOCOMMIT ON;
+SELECT sysdate FROM dual;
+ALTER session SET nls_date_format=’DD.MM.YYYY’;
+
+INSERT INTO Evidenta_pacienti VALUES('111','Ana','28-Jul-2024');
+SELECT *FROM Evidenta_pacienti;
+
+INSERT INTO Evidenta_pacienti VALUES('222','Vali','28-Jun-2016');
+SELECT * FROM Evidenta_pacienti;
+
+DROP tr2;
+
+--3. Se creează un trigger care, la inserarea unei noi linii în tabel, verifică dacă data_nasterii este mai mică decât data curentă; în caz contrar, se generează o excepție și se afișează un mesaj corespunzător.
+
+CREATE OR REPLACE TRIGGER tr3
+BEFORE INSERT ON Evidenta_pacienti
+FOR EACH ROW
+DECLARE
+er EXCEPTION;
+BEGIN
+IF :NEW.data_nasterii>sysdate THEN
+ RAISE er;
+ELSE
+ DBMS_OUTPUT.PUT_LINE ('Inserare reusita!');
+END IF;
+EXCEPTION
+WHEN er THEN
+ RAISE_APPLICATION_ERROR(-20000, 'Eroare: Data_nasterii mai mare decat data curenta!');
+END;
+/ 
+
+INSERT INTO Evidenta_pacienti VALUES ('333', 'Ana', '28-Jul-2018');
+SELECT * FROM Evidenta_pacienti;
+INSERT INTO Evidenta_pacienti VALUES ('444', 'Vali', '28-Jun-2020');
+SELECT * FROM Evidenta_pacienti;
+DROP TABLE Evidenta_pacienti;
+
+--4.a.Sa se creeze cele 3 tabele si sa se populeze cu informatii tabelele angajati si deduceri. 
+
+
+CREATE TABLE angajati
+(id integer PRIMARY KEY,
+nume varchar(30) NOT NULL,
+salar_neg number(5,2)NOT NULL,
+data_angajarii DATE,
+data_concedierii DATE);
+
+CREATE TABLE salarii
+(id integer NOT NULL REFERENCES angajati(id),
+nr_zile integer NOT NULL,
+brut number(5,2),
+deducere number(5,2),
+impozit number(5,2),
+net number(5,2));
+
+CREATE TABLE deduceri
+(brut_min number(5,2),
+brut_max number(5,2),
+deducere number(5,2));
+
+ALTER SESSION SET NLS_DATE_FORMAT=’dd/mm/yyyy’;
+SET AUTOCOMMIT ON;
+
+INSERT INTO angajati VALUES (1,'ion',30,'22/01/2004',NULL);
+INSERT INTO angajati VALUES (2,'gheorghe',20,'02/10/2003',NULL);
+INSERT INTO angajati VALUES (3,'paul',28,'01/03/2002',NULL);
+INSERT INTO deduceri VALUES (0,300,200);
+INSERT INTO deduceri VALUES (300.01,600,150);
+INSERT INTO deduceri VALUES (600.01,800,100);
+INSERT INTO deduceri VALUES (800.01,999.99,0);
+
+--b.Se creează un trigger TRIG_SAL care actualizează automat informațiile din coloanele brut, deducere, impozit și net la adăugarea de noi linii sau la orice actualizare a coloanei nr_zile în tabela SALARII.
+
+CREATE OR REPLACE TRIGGER TRIG_SAL
+BEFORE INSERT OR UPDATE of nr_zile ON salarii
+FOR EACH ROW
+DECLARE
+salar_neg_p number;
+BEGIN
+-- salariu brut
+SELECT salar_neg INTO salar_neg_p FROM angajati WHERE id=:NEW.id;
+:NEW.brut:= :NEW.nr_zile * salar_neg_p;
+-- deduceri 
+SELECT deducere INTO :NEW.deducere FROM deduceri WHERE brut_min<=:NEW.brut
+AND brut_max>=:NEW.brut;
+--impozit
+:NEW.impozit:=(:NEW.brut-:NEW.deducere)*0.16;
+--net
+IF :NEW.impozit<=0 THEN
+:NEW.net:=:NEW.brut;
+ELSE
+:NEW.net:=:NEW.brut-:NEW.impozit;
+END IF;
+END;
+/
+INSERT INTO salarii VALUES(1,20, NULL, NULL, NULL, NULL);
+SELECT * FROM salarii;
+INSERT INTO salarii VALUES(2,10, NULL, NULL, NULL, NULL);
+SELECT * FROM salarii;
+UPDATE salarii SET nr_zile=15 WHERE id=2;
+SELECT * FROM salarii; 

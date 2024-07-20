@@ -1,0 +1,82 @@
+--Sa se creeze o tabela, numita Evidenta_carti, avand urmatoarea structura: 
+CREATE TABLE Evidenta_animale 
+(
+ Nr_inventar integer PRIMARY KEY CHECK (Nr_inventar between 0 and 100000),
+ Titlu varchar(30) NOT  NULL,
+ Autor varchar(30)NOT  NULL,
+ Pagini integer NOT  NULL CHECK (Pagini between 0 and 5000),
+ Editura varchar(30) NOT  NULL,
+ Datap date NOT NULL,
+ Pret number(5,2)); 
+
+
+
+--2). Se cere popularea tabelei Evidenta_carti cu urmatoarele articole:
+SET LINESIZE 500;
+SET AUTOCOMMIT ON;
+SELECT sysdate FROM dual;
+ALTER session SET nls_date_format=’DD.MM.YYYY’;
+INSERT INTO Evidenta_carti
+ VALUES (1, 'Povesti','Ion Creanga',200,'Teora','11.02.2005',10,0);
+INSERT INTO Evidenta_carti
+ VALUES (2, 'Basme','Petre Ispirescu',100,'Teora','12.03.2001',20,50);
+INSERT INTO Evidenta_carti
+ VALUES (3, 'Poezii','Mihai Eminescu',50,'Caro','22.02.2012',15);
+INSERT INTO Evidenta_carti
+ VALUES (4, 'Mara','Ion Slavici',70,'Mirton','15.04.2019',40);
+INSERT INTO Evidenta_carti
+ VALUES (5, 'Ion','Liviu Rebreanu',100,'Caro','10.03.2007',NULL);
+INSERT INTO Evidenta_carti
+ VALUES (6, 'Poeme','Ion Barbu',200,'BPT','10.05.2018',55.03);
+--3). Sa se afiseze tot continutul tabelei Evidenta_carti;
+SELECT * FROM Evidenta_carti; 
+--4). Sa se adauge coloana Gen , si sa se completeze aceasta cu valoarea ‚Beletristica’ pentru toate cartile din tabela;
+SELECT * FROM Evidenta_carti;
+alter table Evidenta_carti and add Gen varchar(30) DEFAULT 'Beletristica';
+--5). Sa se introduca patru carti cu urmatoarele caracteristici: 
+INSERT INTO Evidenta_carti
+ VALUES (7, 'HTML','Hohn Doe',80,'Mirton','02.03.2005',20,'Tehnica');
+INSERT INTO Evidenta_carti
+ VALUES (6, 'PHP','Ioan Filip',200,'Teora','02.05.2014',30,'Tehnica');
+INSERT INTO Evidenta_carti
+ VALUES (6, 'Roboti','Isac Asimov',90,'Nemira','02.07.2017',40,'SF');
+INSERT INTO Evidenta_carti
+ VALUES (6, 'Stapanul inelelor','J. R. R. Tolkien',170,'Mirton','01.07.2012',50,'SF');
+--6). Sa se afiseze titlul si autorul cartilor care au fost publicate inainte de anul 2012, din genul ‘Beletristica’, ordonate dupa titlu.
+SELECT * FROM Evidenta_carti 
+WHERE datap<’01.01.2012’ AND Gen = ’beletristica’ 
+ORDER BY Titlu;
+--7). Sa se afiseze numarul total de carti din tabela, sub forma: 
+SELECT COUNT(*) as Numar_Carti 
+FROM evidenta_carti;
+--8). Sa se afiseze numarul total de carti al caror pret este specificat, sub forma: 
+SELECT COUNT(*) as Numar_Carti FROM evidenta_carti WHERE Pret is not NULL;
+--9). Sa se afiseze cea mai scumpa carte din tabela, sub forma: 
+SELECT * FROM Evidenta_carti 
+WHERE Pret=(SELECT MAX(Pret) FROM Evidenta_carti);
+--10). Sa se afiseze o lista cu numarul de carti din fiecare gen. Articolele vor fi ordonate dupa gen, descrescator, sub forma: 
+SELECT Gen, COUNT(*) AS Numar_Carti FROM Carti GROUP BY Gen ORDER BY Gen DESC;
+--11). Sa se reafiseze informatiile de la punctul precedent, ignorand articolele care nu au pretul specificat.
+SELECT Gen, COUNT(*) AS Numar_Carti FROM Carti 
+WHERE Pret is not NULL 
+GROUP BY Gen 
+ORDER BY Gen DESC;
+--12). Sa se afiseze pentru fiecare editura, numarul de carti din fiecare gen. Articolele vor fi ordonate dupa editura, crescator, sub forma: 
+SELECT Gen, COUNT(*) AS Numar_Carti FROM Carti 
+GROUP BY Editura,Gen ORDER BY Editura;
+--13). Sa se afiseze o lista cu toate editurile din tabela, precum si pretul minim, maxim si mediu al cartilor diferitelor edituri. Articolele vor fi ordonate dupa editura, crescator, sub forma:
+SELECT Editura,
+    MIN(Pret) AS Pret_Minim,
+    MAX(Pret) AS Pret_Maxim,
+    AVG(Pret) AS Pret_Mediu
+FROM 
+    Carti
+GROUP BY 
+    Editura
+ORDER BY 
+    Editura ASC;
+ --14). Sa se afiseze editura, sau dupa caz, editurile, cu cel mai mic numar de carti, sub forma: 
+SELECT Editura, COUNT (*) as NR
+FROM Eidenta_carti
+GROUP BY Editura
+HAVING COUNT(*)=(SELECT MIN(COUNT(*) FROM Evidenta_carti GROUP BY Editura);

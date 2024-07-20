@@ -1,0 +1,70 @@
+--1. Sa se creeze o tabela, numita Evidenta_carti, avand urmatoarea structura: 
+CREATE TABLE Evidenta_Carti(
+Nr_inventar integer PRIMARY KEY CHECK (Nr_inventar between 0 and 100000),
+Titlu varchar(30) UNIQUE NOT NULL,
+Autor varchar(30) NOT NULL,
+Pagini integer NOT NULL,
+Editura varchar(30),
+Datap date,
+Pret number(5,2),
+Imprumutat char(2) DEFAULT NULL);
+set autocommit on;
+
+--2. Se cere popularea tabelei Evidenta_carti cu urmatoarele articole:
+select sysdate FROM dual;
+alter session set nls_date_format='dd-mm-yyyy';
+INSERT INTO Evidenta_carti (Nr_inventar,Titlu,Autor,Pagini,Editura,Datap,Pret) VALUES (1,'Povesti','Ion Creanga',200,'Teora','11.02.2001',20.50);
+INSERT INTO Evidenta_carti (Nr_inventar,Titlu,Autor,Pagini,Editura,Datap,Pret) VALUES (2,'Basme','Petre Ispirescu',100,'Teora','12.03.2001',20.50);
+INSERT INTO Evidenta_carti (Nr_inventar,Titlu,Autor,Pagini,Editura,Datap,Pret) VALUES (3,'Poezii','Mihai Eminescu',50,'Caro','22.02.2012',15);
+INSERT INTO Evidenta_carti (Nr_inventar,Titlu,Autor,Pagini,Editura,Datap,Pret) VALUES (4,'Mara','Ion Slavici',70,'Mirton','15.04.2010',40);
+INSERT INTO Evidenta_carti (Nr_inventar, Titlu, Autor, Pagini, Editura, Datap, Pret) VALUES (5, 'Ion','Liviu Rebreanu', 100, NULL, '10.03.2007', NULL);
+INSERT INTO Evidenta_carti (Nr_inventar, Titlu, Autor, Pagini, Editura, Datap, Pret) VALUES (6, 'Poeme', 'Ion Barbu', 200, 'BPT', NULL, 55.03);
+
+--3. Sa se afiseze tot continutul tabelei Evidenta_carti;
+SELECT * FROM Evidenta_carti;
+
+--4. Sa se majoreze cu 10% pretul tuturor cartilor din tabela;
+
+UPDATE Evidenta_carti SET pret=1.1*pret;
+
+--5. Sa se afiseze o lista cu toate editurile, fara dubluri si fara a afisa valoarea NULL
+
+SELECT DISTINCT editura FROM Evidenta_carti WHERE editura IS NOT NULL;
+
+--6.Sa se incerce introducerea unei carti cu urmatoarele caracteristici, omitand precizarea Nr_inventar
+
+INSERT INTO Evidenta_carti (Titlu,Autor,Pagini,Editura,Datap,Pret) VALUES ('HTML','Jhon Doe',150,'Mirton','15.02.2000',20); 
+--eroare
+
+--7. Sa se incerce introducerea unei carti cu urmatoarele caracteristici:
+
+INSERT INTO Evidenta_carti(Nr_inventar,Titlu,Autor,Pagini,Editura,Datap,Pret) VALUES (4,'HTML', 'Jhon Doe', 150, 'Mirton', '15.02.2000', 20);
+--eroare
+
+--8. Sa se adauge constrangerea CHECK pe campul Imprumutat, astfel incat in acest camp sa nu fie acceptate decat valorile ‘DA’ sau ‘NU’;
+
+ALTER TABLE Evidenta_carti ADD CONSTRAINT imprumut CHECK (Imprumutat IN ('DA', 'NU'));
+
+--10. Sa se modifice tipul de data al campului Titlu, din varchar(30) in varchar(40);
+
+ALTER TABLE Evidenta_carti MODIFY Titlu varchar(40);
+
+--11. Sa se adauge o coloana numita Gen in cadrul tabelei, si sa se completeze cu valoarea ‘beletristica’ pentru toate cele 6 articole existente. Tipul de data al coloanei Gen este varchar(30);
+ 
+ALTER TABLE Evidenta_carti ADD Gen varchar(30) DEFAULT'beletristica';
+
+--12. Sa se introduca doua carti cu urmatoarele caracteristici: 
+
+INSERT INTO evidenta_carti (Nr_inventar, Titlu,Autor,Pagini,Editura,Datap,Pret,Gen) VALUES (7,'HTML','Jhon Doe',150,'Mirton','15.02.2000',20,'tehnica');
+INSERT INTO evidenta_carti (Nr_inventar, Titlu,Autor,Pagini,Editura,Datap,Pret,Gen) VALUES (8,'PHP','Ioan Filip',200,'Teora','15.02.2007',30,'tehnica');
+
+--13. Sa se afiseze toate cartile care au fost publicate inainte de anul 2008;
+
+SELECT * FROM Evidenta_carti WHERE datap<'01.01.2008';
+
+--14. Sa se afiseze titlul si autorul cartilor care au fost publicate dupa anul 2000, din genul ‘beletristica’;
+
+SELECT Titlu,Autor FROM Evidenta_carti WHERE Datap >'01.01.2000' AND Gen='beletristica' ORDER BY Titlu;
+
+--16. Sa se creeze tabela Beletristica, cu exact aceeasi structura cu a tabelei Evidenta_carti, de dinaintea adaugarii coloanei Gen, dar fara a contine nicio linie (deci fara copierea datelor din tabela originala). 
+ 

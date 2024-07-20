@@ -1,0 +1,33 @@
+SET AUTOCOMMIT ON;
+
+SELECT sysdate FROM dual;
+
+ALTER session SET nls_date_format=’DD-MM-YYYY’;
+
+CREATE TABLE Salarii (
+CNP char(13) PRIMARY KEY,
+Nume varchar(30) NOT NULL,
+Functie varchar(20) NOT NULL,
+Venit_brut numeric NOT NULL,
+Venit_net numeric);
+INSERT INTO Salarii VALUES(’111’, ’Vali’, ’inginer’,4400, NULL);
+INSERT INTO Salarii VALUES(’222’, ’Alina’, ’inginer’,2200, NULL);
+
+CREATE OR REPLACE FUNCTION Salariu_net (cnp_param IN VARCHAR2)
+  RETURN NUMBER
+IS
+  venit_net_salariu NUMERIC;
+BEGIN
+  SELECT (Venit_brut - (Venit_brut * 0.25) - (Venit_brut * 0.1) - ((Venit_brut - (Venit_brut * 0.25) - (Venit_brut * 0.1)) * 0.1))
+  INTO venit_net_salariu
+  FROM Salarii
+  WHERE CNP = cnp_param;
+
+  RETURN venit_net_salariu;
+EXCEPTION
+  WHEN NO_DATA_FOUND THEN
+    DBMS_OUTPUT.PUT_LINE('Nu există astfel de date.');
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('A apărut o altă excepție!');
+END;
+/

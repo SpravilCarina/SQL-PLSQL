@@ -1,0 +1,76 @@
+--1.Sa se creeze tabelele Pacienti, Consultatii si Plati cu urmatoarea structura:
+CREATE TABLE PACIENTI
+ (CNP CHAR(13) PRIMARY KEY,
+ Nume VARCHAR(30) NOT NULL,
+ Adresa VARCHAR(30) NOT NULL,
+ Data_nasterii DATE NOT NULL);
+
+CREATE TABLE CONSULTATII
+ (CNP CHAR(13) NOT NULL REFERENCES PACIENTI(CNP),
+ Diagnostic VARCHAR(30),
+ Id_consult INTEGER PRIMARY KEY,
+ Data_consult DATE DEFAULT SYSDATE,
+ Plata NUMERIC);
+
+CREATE TABLE PLATI
+ (Id_consult INTEGER NOT NULL
+ REFERENCES CONSULTATII(Id_consult) ON DELETE CASCADE,
+ Rata NUMERIC NOT NULL,
+ Data_plata DATE DEFAULT SYSDATE);
+
+--2.Sa se populeze tabelele cu date (in ordinea corecta), introducand-se se minim 2 pacienti,minim 3 consultatii si respectiv minim 3 plati de rate. Se vor incerca stergeri ale unui pacient,consultatie, plata, in diverse ordini, urmarind modul in care lucreaza constrangerile de legatura intre tabele (vizualizand continutul tabelelor dupa aceste operatii). 
+
+SET AUTOCOMMIT ON;
+
+SELECT sysdate FROM dual;
+
+ALTER session SET nls_date_format=’DD-MM-YYYY’;
+
+INSERT INTO pacienti VALUES ('121','Ion','Strada 1','22-03-2008');
+INSERT INTO pacienti VALUES ('122','Alex','Strada 2','22-03-2005');
+INSERT INTO pacienti VALUES ('123','Vasile','Strada 3','22-03-2015');
+INSERT INTO pacienti VALUES ('124','Maria','Strada 4','22-04-2015');
+INSERT INTO consultatii VALUES ('121', 'pojar', 1, ’02-09-2016’, 40);
+INSERT INTO consultatii VALUES ('121', 'gripa', 2, ’15-09-2017’, 55);
+INSERT INTO consultatii VALUES ('122', 'viroza’,3, ’22-11-2017’, 50);
+INSERT INTO consultatii VALUES ('123', 'gripa', 4, ’21-12-2017’, 30);
+
+INSERT INTO plati VALUES (1, 2, '02-09-2016');
+INSERT INTO plati VALUES (1, 4, '24-09-2016');
+INSERT INTO plati VALUES (2, 40, '25-09-2017');
+INSERT INTO plati VALUES (3, 20, '25-11-2017');
+INSERT INTO plati VALUES (3, 30, '27-11-2017');
+
+--3.Sa se scrie comenzile pentru afisarea intregului continut al celor 3 tabele:
+ 
+SELECT * FROM pacienti;
+SELECT *FROM consultatii;
+SELECT * FROM plati;
+
+--4.Pentru care consultatii (Id_consult) s-au facut plati si cat s-a platit? 
+
+SELECT Id_consult,sum(Rata) as Platit FROM plati group by Id_consult;
+
+--Pentru fiecare consultatie cat mai este de platit si care este CNP-ul pacientului aferent? Ordonati inregistrarile crescator, dupa Id_consult. 
+
+SELECT A.Id_consult, A.CNP, A.Plata-NVL(sum(B.Rata),0) AS De_plata
+ FROM consultatii A, plati B
+ WHERE A.Id_consult= B.Id_consult(+)
+ GROUP BY A.Id_consult,A.CNP,A.Plata
+ ORDER BY Id_consult; 
+
+--Pentru care consultatii (Id_consult) s-a platit integral si care este CNP-ul pacientului care a platit? 
+
+SELECT A.Id_consult, A.CNP, A.Plata-NVL(sum(B.Rata),0) AS De_plata
+FROM consultatii A, plati B
+WHERE A.Id_consult= B.Id_consult(+)
+GROUP by A.Id_consult,A.CNP,A.Plata
+HAVING A.Plata-NVL(sum(B.Rata),0)=0; 
+
+--Pentru fiecare consult, care este numele pacientilor, CNP-ul, si cat mai au de plata pentru consult (ordonat in ordinea descrescatoare a sumelor de plata) – de folosit nume de alias obligatoriu.
+
+SELECT A.Id_consult, A.CNP, C.Nume, A.Plata-NVL(sum(B.Rata),0) AS De_plata
+FROM consultatii A, plati B, pacienti C
+WHERE A.Id_consult= B.Id_consult(+) and A.CNP=C.CNP
+GROUP BY A.Id_consult, A.CNP, A.Plata, C.Nume
+ORDER BY De_plata DESC;

@@ -1,0 +1,251 @@
+--1). Scrieti o procedura PL/SQL, numita afisare, al carei apel sa determine afisarea pe ecran a parametrului sau de intrare (de tip varchar).
+SET SERVEROUTPUT ON;
+CREATE OR REPLACE PROCEDURE afisare (var varchar) AS
+BEGIN
+DBMS_OUTPUT.PUT_LINE(var);
+END;
+/ 
+exec afisare('mesaj');
+exec afisare('1212'); 
+--apel procedura dintr-un bloc PL/SQL
+ DECLARE
+ var varchar(30):= 'Hello world!';
+ BEGIN
+afisare(var);
+ END;
+ / 
+
+--2. Considerand tabela Evidenta_persoane, cu doua campuri (id de tip integer, cheie primara, si nume de tip varchar(30)), scrieti o procedura stocata, numita adaugare, care permite adaugarea de noi linii in tabela. Se vor trata exceptiile care pot sa apara, abandonand operatia si afisand un mesaj de eroare.
+CREATE TABLE Evidenta_persoane (id INTEGER PRIMARY KEY, nume VARCHAR(30));
+CREATE OR REPLACE PROCEDURE adaugare (id integer, nume varchar) AS
+BEGIN
+INSERT INTO Evidenta_persoane VALUES(id,nume);
+EXCEPTION
+WHEN others THEN
+ RAISE_APPLICATION_ERROR(-20000, 'Adaugare nereusita!');
+END;
+/ 
+
+-- 3. Considerind tabela Evidenta_persoane, cu doua campuri (id de tip integer, cheie primara,
+--si nume de tip varchar(30)), scrieti o procedura stocata, numita adaugare, care permite
+--adaugarea de noi linii in tabela. Se vor trata exceptiile care pot sa apara, permitand o adaugare
+--in campul de tip primary key a valorii celei mai mari din el incrementata cu unu (ignorand
+--valoarea pasata gresit ca parametru de intrare); se va semnala printr-un mesaj anomalia
+--rezolvata.  
+
+CREATE TABLE Evidenta_persoane (id INTEGER PRIMARY KEY, nume VARCHAR(30));
+CREATE OR REPLACE PROCEDURE adaugare (id integer, nume varchar) AS
+var int;
+BEGIN
+INSERT INTO Evidenta_persoane VALUES(id,nume);
+EXCEPTION
+WHEN others THEN
+BEGIN
+ SELECT MAX(id) INTO var FROM Evidenta_persoane;
+ INSERT INTO Evidenta_persoane VALUES(var+1,nume);
+ DBMS_OUTPUT.PUT_LINE('Inserare reusita! ');
+END;
+END;
+/ 
+
+--4.Fie tabela pacienti, avand campurile(cnp char(13) primary key, nume varchar (30),
+--data_nasterii date). Creati o procedura stocata, numita adaugare, care verifica in momentul
+--introducerii uni noi linii in tabela ca data_nasterii sa fie mai mica decat data curenta. Daca
+--data_nasterii>data curenta, se completeaza campul cu NULL si se semnaleaza problema
+--printr-un mesaj (linia adaugandu-se totusi).
+
+CREATE TABLE pacienti (cnp char(13) PRIMARY KEY, nume VARCHAR(30),
+data_nasterii date);
+CREATE OR REPLACE PROCEDURE adaugare(cnp CHAR, nume VARCHAR, data_nasterii
+DATE) IS
+BEGIN
+If data_nasterii>SYSDATE THEN
+INSERT INTO pacienti VALUES(cnp,nume,NULL);
+DBMS_OUTPUT.PUT_LINE('Inserare cu NULL!');
+ELSE
+INSERT INTO pacienti VALUES(cnp,nume,data_nasterii);
+END IF;
+EXCEPTION
+WHEN others THEN
+RAISE_APPLICATION_ERROR(-20000, 'Adaugare nereusita!');
+END;
+/ 
+
+
+--5.Fie tabela pacienti, avand campurile (cnp char(13) primary key, nume varchar (30),
+--data_nasterii date). Creati o procedura stocata, numita adaugare, care verifica in momentul
+--introducerii uni noi linii in tabela ca data_nasterii sa fie mai mica decat data curenta. Daca
+--data_nasterii>data curenta, se interzice adaugarea noii linii, semnalandu-se acest lucru printrun mesaj. 
+
+CREATE OR REPLACE PROCEDURE adaugare(cnp CHAR, nume VARCHAR, data_nasterii
+DATE) IS
+er EXCEPTION;
+BEGIN
+If data_nasterii<SYSDATE THEN
+ INSERT INTO pacienti VALUES(cnp,nume,data_nasterii);
+ELSE
+RAISE er;
+END IF;
+EXCEPTION
+WHEN er THEN
+ DBMS_OUTPUT.PUT_LINE('Adaugarea nu s-a efectuat. Data nasterii > Data
+ curenta!');
+WHEN others THEN
+ RAISE_APPLICATION_ERROR(-20000, 'Eroare!');
+END;
+/ 
+
+--1. Se considera baza de date XE, avand urmatoarea structura: 
+
+SET AUTOCOMMIT ON;
+
+SELECT sysdate FROM dual;
+
+ALTER session SET nls_date_format=’DD-MM-YYYY’;
+
+CREATE TABLE studenti (
+Marca char(6) PRIMARY KEY,
+Nume varchar(30) NOT NULL,
+An integer NOT NULL CHECK (An>0 and An<5),
+Grupa integer NOT NULL,
+Media_generala NUMBER(4,2));
+CREATE TABLE discipline (
+Cod_disciplina integer PRIMARY KEY,
+Denumire_disciplina varchar(30) NOT NULL);
+CREATE TABLE note(
+Marca char(6) NOT NULL REFERENCES studenti (Marca) ON DELETE CASCADE,
+Nota integer NOT NULL CHECK (Nota >0 AND Nota <=10),
+Cod_disciplina integer NOT NULL REFERENCES discipline(Cod_disciplina)
+ON DELETE CASCADE);
+
+INSERT INTO studenti VALUES('111111', ’Rosu Alina’, 1,1,NULL);
+INSERT INTO studenti VALUES('222222', 'Vlad Simona',1,2, NULL);
+INSERT INTO studenti VALUES('333333', 'Lung Ionut', 2,1, NULL);
+INSERT INTO discipline VALUES(1, 'Programare WEB');
+INSERT INTO discipline VALUES(2, 'Baze de date');
+INSERT INTO discipline VALUES(3, 'Retele neuronale');
+INSERT INTO discipline VALUES(4, 'Java');
+INSERT INTO note VALUES('111111',8, 1);
+INSERT INTO note VALUES('111111',10, 2);
+INSERT INTO note VALUES('222222',4, 2);
+INSERT INTO note VALUES('333333',7, 3);
+INSERT INTO note VALUES('333333',8, 4);
+ 
+--medie studenti
+CREATE OR REPLACE PROCEDURE calculeaza_medie_an_studiu (anul_studiu IN INTEGER) AS
+    total_note NUMBER;
+    numar_studenti NUMBER;
+    medie NUMBER;
+BEGIN
+    SELECT SUM(n.nota) INTO total_note
+    FROM note n
+    JOIN studenti s ON n.marca = s.marca
+    WHERE s.an = anul_studiu;
+
+    SELECT COUNT(DISTINCT marca) INTO numar_studenti
+    FROM studenti
+    WHERE an = anul_studiu;
+
+    IF numar_studenti > 0 THEN
+        medie := total_note / numar_studenti;
+        DBMS_OUTPUT.PUT_LINE('Media pentru anul ' || anul_studiu || ' este: ' || medie);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Nu exista studenti inregistrati pentru anul ' || anul_studiu);
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Eroare: ' || SQLERRM);
+END;
+/
+
+
+--pentru studenti integralisti
+
+CREATE OR REPLACE PROCEDURE calculeaza_medie_integralisti (anul_studiu IN INTEGER) AS
+    total_note NUMBER;
+    numar_studenti NUMBER;
+    medie NUMBER;
+    total_materii NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO total_materii
+    FROM discipline;
+
+    SELECT COUNT(DISTINCT s.marca) INTO numar_studenti
+    FROM studenti s
+    WHERE s.an = anul_studiu
+    AND NOT EXISTS (
+        SELECT 1
+        FROM discipline d
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM note n
+            WHERE n.marca = s.marca
+            AND n.cod_disciplina = d.cod_disciplina
+            AND n.nota >= 4
+        )
+    );
+
+    IF numar_studenti > 0 THEN
+        SELECT SUM(n.nota) INTO total_note
+        FROM note n
+        JOIN studenti s ON n.marca = s.marca
+        WHERE s.an = anul_studiu
+        AND NOT EXISTS (
+            SELECT 1
+            FROM discipline d
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM note n
+                WHERE n.marca = s.marca
+                AND n.cod_disciplina = d.cod_disciplina
+                AND n.nota >= 4
+            )
+        );
+
+        medie := total_note / numar_studenti;
+        DBMS_OUTPUT.PUT_LINE('Media pentru anul ' || anul_studiu || ' a studenților integraliști este: ' || medie);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Nu exista studenti integralisti inregistrati pentru anul ' || anul_studiu);
+    END IF;
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Eroare: ' || SQLERRM);
+END;
+/
+
+--test:
+   --SQL> BEGIN
+  --2  calculeaza_medie_an_studiu(1);
+ -- 3  END;
+ -- 4  /
+
+CREATE OR REPLACE PROCEDURE calculeaza_si_actualizeaza (
+    marca_student IN CHAR,
+    OUT medie_student OUT NUMBER
+) AS
+    total_note NUMBER;
+    numar_note NUMBER;
+BEGIN
+    SELECT SUM(n.nota), COUNT(*) INTO total_note, numar_note
+    FROM note n
+    WHERE n.marca = marca_student;
+
+    IF numar_note > 0 THEN
+        medie_student := total_note / numar_note;
+        -- Actualizăm media în tabela studenti
+        UPDATE studenti
+        SET media_generala = medie_student
+        WHERE marca = marca_student;
+    ELSE
+        RAISE_APPLICATION_ERROR(-20001, 'Studentul nu are note înregistrate.');
+    END IF;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20002, 'Nu s-au gasit date pentru studentul cu marca specificata.');
+    WHEN OTHERS THEN
+        RAISE_APPLICATION_ERROR(-20003, 'Eroare: ' || SQLERRM);
+END;
+/
+
+
+
